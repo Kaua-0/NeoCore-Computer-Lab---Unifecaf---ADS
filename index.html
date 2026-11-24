@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <title>
+   NeoCore Computer Lab | Simulador de Arquitetura
+  </title>
+  <link href="style.css" rel="stylesheet"/>
+ </head>
+ <body>
+  <div class="wrap">
+   <header class="top">
+    <div>
+     <div class="eyebrow">
+      UNIFECAF · COMPUTER ARCHITECTURE AND ORGANIZATION
+     </div>
+     <h1>
+      NeoCore
+      <span style="color:#4bdfc4">
+       Computer Lab
+      </span>
+     </h1>
+     <p class="lead">
+      Simulação funcional do ciclo
+      <b>
+       fetch → decode → execute
+      </b>
+      em uma arquitetura didática de Von Neumann. Execute instruções e acompanhe CPU, registradores, cache, RAM, barramentos e entrada/saída.
+     </p>
+    </div>
+    <div class="topmark">
+     PROVA DE CONCEITO · v1.0
+     <br/>
+     100% OFFLINE • HTML + JavaScript
+    </div>
+   </header>
+   <section aria-label="Controles da simulação" class="pane control">
+    <div class="controlbar">
+     <label>
+      Programa de demonstração
+      <select id="program">
+       <option value="soma">
+        01 · Soma, memória e saída
+       </option>
+       <option value="cache">
+        02 · Cache: hit e miss
+       </option>
+       <option value="entrada">
+        03 · Entrada e saída
+       </option>
+      </select>
+     </label>
+     <label>
+      RAM [32]
+      <input id="data32" max="255" min="0" type="number" value="7"/>
+     </label>
+     <label>
+      RAM [33]
+      <input id="data33" max="255" min="0" type="number" value="5"/>
+     </label>
+     <label>
+      Entrada
+      <input id="inputValue" max="255" min="0" type="number" value="9"/>
+     </label>
+     <button class="btn primary" id="step" title="Avança uma microetapa">
+      ▶ Próxima etapa
+     </button>
+     <button class="btn" id="auto">
+      ▷ Executar automático
+     </button>
+     <button class="btn warning" id="reset">
+      ↺ Reiniciar
+     </button>
+     <button class="btn" id="export">
+      ↓ Exportar execução
+     </button>
+    </div>
+    <div class="help">
+     Cada clique avança uma etapa do ciclo. Para alterar programa ou valores, clique em
+     <b>
+      Reiniciar
+     </b>
+     . As instruções e os dados compartilham a mesma RAM lógica. Nenhuma instalação ou conexão com a internet é necessária.
+    </div>
+   </section>
+   <div class="summary">
+    <div class="pane metric">
+     <small>
+      Etapa atual
+     </small>
+     <strong id="stage" style="font-size:18px;margin-top:10px">
+      Pronto
+     </strong>
+     <span id="stagehint">
+      Aguardando início
+     </span>
+    </div>
+    <div class="pane metric">
+     <small>
+      PC • próximo endereço
+     </small>
+     <strong id="pc">
+      00
+     </strong>
+     <span>
+      Contador de programa
+     </span>
+    </div>
+    <div class="pane metric">
+     <small>
+      Microetapas
+     </small>
+     <strong id="cycles">
+      0
+     </strong>
+     <span>
+      Busca / decodificação / execução
+     </span>
+    </div>
+    <div class="pane metric">
+     <small>
+      Cache • acertos
+     </small>
+     <strong id="hits">
+      0
+     </strong>
+     <span id="miss">
+      Falhas: 0
+     </span>
+    </div>
+    <div class="pane metric">
+     <small>
+      Instruções concluídas
+     </small>
+     <strong id="retired">
+      0
+     </strong>
+     <span id="stateText">
+      Em espera
+     </span>
+    </div>
+   </div>
+   <div class="cols">
+    <main class="pane block">
+     <div class="footerrow">
+      <h2 class="sectiontitle">
+       Diagrama interativo da arquitetura
+      </h2>
+      <span class="statusbadge" id="statebadge">
+       PRONTO
+      </span>
+     </div>
+     <div class="chips">
+      <span class="chip" id="stepFetch">
+       1 · FETCH — BUSCA
+      </span>
+      <span class="chip" id="stepDecode">
+       2 · DECODE — DECODIFICAÇÃO
+      </span>
+      <span class="chip" id="stepExecute">
+       3 · EXECUTE — EXECUÇÃO
+      </span>
+     </div>
+     <div class="diagram">
+      <div class="cpu" id="cpu">
+       <div class="cpuheader">
+        <strong>
+         PROCESSADOR / CPU
+        </strong>
+        <span class="smallnote">
+         Modelo de 8 bits
+        </span>
+       </div>
+       <div class="nodegrid">
+        <div class="node" id="nodeCU">
+         <div class="nm">
+          UNIDADE DE CONTROLE
+         </div>
+         <div class="val" id="cuVal">
+          Aguardando
+         </div>
+         <div class="desc">
+          Interpreta a instrução e coordena sinais
+         </div>
+        </div>
+        <div class="node" id="nodeALU">
+         <div class="nm">
+          ULA / ALU
+         </div>
+         <div class="val" id="aluVal">
+          —
+         </div>
+         <div class="desc">
+          Operações aritméticas de 8 bits
+         </div>
+        </div>
+        <div class="node" id="nodeRegs">
+         <div class="nm">
+          REGISTRADORES INTERNOS
+         </div>
+         <div class="val" id="insideRegs">
+          PC=00 · IR=—
+         </div>
+         <div class="desc">
+          PC, IR, MAR, MDR, R0–R3, Z
+         </div>
+        </div>
+       </div>
+      </div>
+      <div class="arrow">
+       ↕ sinais de endereço, dados e controle
+      </div>
+      <div class="busbar" id="nodeBus">
+       BARRAMENTOS DO SISTEMA
+      </div>
+      <div class="busvalues">
+       <div>
+        ENDEREÇOS
+        <b id="addr">
+         —
+        </b>
+       </div>
+       <div>
+        DADOS
+        <b id="data">
+         —
+        </b>
+       </div>
+       <div>
+        CONTROLE
+        <b id="control">
+         IDLE
+        </b>
+       </div>
+      </div>
+      <div class="devices">
+       <div class="node" id="nodeIO">
+        <div class="nm">
+         ENTRADA / SAÍDA
+        </div>
+        <div class="val" id="ioVal">
+         IN: 9
+        </div>
+        <div class="desc">
+         Buffers de teclado e monitor
+        </div>
+       </div>
+       <div class="node" id="nodeCache">
+        <div class="nm">
+         CACHE L1 DIDÁTICA
+        </div>
+        <div class="val" id="cacheVal">
+         4 linhas
+        </div>
+        <div class="desc">
+         Mapeamento direto de dados
+        </div>
+       </div>
+       <div class="node" id="nodeRam">
+        <div class="nm">
+         MEMÓRIA PRINCIPAL
+        </div>
+        <div class="val" id="ramVal">
+         64 endereços
+        </div>
+        <div class="desc">
+         Programa + dados na mesma RAM
+        </div>
+       </div>
+      </div>
+     </div>
+     <div class="legend">
+      <span>
+       <i>
+       </i>
+       Componente ativo
+      </span>
+      <span>
+       Leitura de instruções usa RAM diretamente
+      </span>
+      <span>
+       Cache: dados nos endereços 32–63
+      </span>
+     </div>
+     <div aria-live="polite" class="trace">
+      <strong id="traceHead">
+       Pronto para simular
+      </strong>
+      <p id="traceText">
+       Clique em “Próxima etapa” para buscar a primeira instrução da memória.
+      </p>
+     </div>
+     <div class="splitline">
+     </div>
+     <div class="kicker">
+      Registradores da CPU
+     </div>
+     <div class="regs">
+      <div class="reg" id="regR0">
+       <span>
+        R0
+       </span>
+       <b id="r0">
+        0
+       </b>
+      </div>
+      <div class="reg" id="regR1">
+       <span>
+        R1
+       </span>
+       <b id="r1">
+        0
+       </b>
+      </div>
+      <div class="reg" id="regR2">
+       <span>
+        R2
+       </span>
+       <b id="r2">
+        0
+       </b>
+      </div>
+      <div class="reg" id="regR3">
+       <span>
+        R3
+       </span>
+       <b id="r3">
+        0
+       </b>
+      </div>
+     </div>
+     <div class="kicker">
+      Registradores de controle
+     </div>
+     <div class="data-table" style="overflow-x:auto">
+      <table class="data-table" style="width:100%">
+       <tbody>
+        <tr>
+         <th>
+          IR
+         </th>
+         <td class="mono" id="ir">
+          —
+         </td>
+         <th>
+          MAR
+         </th>
+         <td class="mono" id="mar">
+          —
+         </td>
+        </tr>
+        <tr>
+         <th>
+          MDR
+         </th>
+         <td class="mono" id="mdr">
+          —
+         </td>
+         <th>
+          Flag Z
+         </th>
+         <td class="mono" id="z">
+          0
+         </td>
+        </tr>
+       </tbody>
+      </table>
+     </div>
+     <div class="splitline">
+     </div>
+     <div class="kicker">
+      Saída do computador (monitor)
+     </div>
+     <div class="io-screen" id="screen">
+      <em>
+       Sem saída até o momento
+      </em>
+     </div>
+    </main>
+    <aside class="rightstack">
+     <section class="pane block">
+      <div class="footerrow">
+       <h2 class="sectiontitle">
+        Programa armazenado na RAM
+       </h2>
+       <span class="smallnote" id="progSize">
+       </span>
+      </div>
+      <table class="data-table">
+       <thead>
+        <tr>
+         <th>
+          End.
+         </th>
+         <th>
+          Instrução
+         </th>
+         <th>
+          Situação
+         </th>
+        </tr>
+       </thead>
+       <tbody id="programList">
+       </tbody>
+      </table>
+      <div class="smallnote" style="margin-top:9px">
+       Representação didática: uma instrução abstrata ocupa uma palavra lógica. Não há codificação binária de opcodes.
+      </div>
+     </section>
+     <section class="pane block">
+      <h2 class="sectiontitle">
+       Memória de dados e cache
+      </h2>
+      <div class="kicker">
+       RAM — posições monitoradas
+      </div>
+      <table class="data-table">
+       <thead>
+        <tr>
+         <th>
+          Endereço
+         </th>
+         <th>
+          Valor (decimal)
+         </th>
+         <th>
+          Função
+         </th>
+        </tr>
+       </thead>
+       <tbody id="dataList">
+       </tbody>
+      </table>
+      <div class="splitline">
+      </div>
+      <div class="kicker">
+       Cache L1 — 4 linhas, mapeamento direto
+      </div>
+      <table class="data-table">
+       <thead>
+        <tr>
+         <th>
+          Linha
+         </th>
+         <th>
+          Tag
+         </th>
+         <th>
+          Endereço
+         </th>
+         <th>
+          Dado
+         </th>
+        </tr>
+       </thead>
+       <tbody id="cacheList">
+       </tbody>
+      </table>
+     </section>
+     <section class="pane block">
+      <h2 class="sectiontitle">
+       Rastro da execução
+      </h2>
+      <div aria-live="polite" class="log" id="log">
+       <div class="entry">
+        <b>
+         Inicializado
+        </b>
+        <p>
+         Dados e instruções carregados. Avance para iniciar.
+        </p>
+       </div>
+      </div>
+     </section>
+    </aside>
+   </div>
+   <footer class="footer">
+    <strong>
+     NeoCore Tech · Laboratório de Arquitetura de Computadores
+    </strong>
+    — Simulador funcional com escopo didático. Conceitos modelados: Von Neumann, UC, ULA, registradores, RAM, cache, barramentos, E/S e ciclo de instrução. Valores de dados são inteiros sem sinal (0–255), com resultado aritmético módulo 256.
+   </footer>
+  </div>
+  <script src="script.js">
+  </script>
+ </body>
+</html>
+
