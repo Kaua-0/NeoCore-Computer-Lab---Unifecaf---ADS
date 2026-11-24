@@ -171,7 +171,7 @@ Na apresentação, recomenda-se demonstrar a execução do programa de soma **pa
 **Instituição:** UNIFECAF  
 **Curso:** Análise e Desenvolvimento de Sistemas  
 **Disciplina:** Computer Architecture and Organization  
-**Aluno(a):** _[Preencher nome]_  
+**Aluno(a):** _Kauã Silva_  
 **Ano:** 2026
 
 ---
